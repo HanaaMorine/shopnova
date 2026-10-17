@@ -1,0 +1,31 @@
+[
+  {"id": "P001", "nom": "Souris sans fil Ergo", "categorie": "Informatique", "prix": 19.50, "stock": 30, "description": "Souris sans fil ergonomique, 1600 DPI, autonomie 12 mois."},
+  {"id": "P002", "nom": "Clavier mécanique K80", "categorie": "Informatique", "prix": 59.90, "stock": 12, "description": "Clavier mécanique AZERTY rétroéclairé, switches rouges."},
+  {"id": "P003", "nom": "Écran 24 pouces Full HD", "categorie": "Informatique", "prix": 129.00, "stock": 5, "description": "Écran IPS 24 pouces, 1920x1080, 75 Hz, HDMI."},
+  {"id": "P004", "nom": "Webcam HD 1080p", "categorie": "Informatique", "prix": 34.99, "stock": 0, "description": "Webcam Full HD avec micro intégré, idéale pour le télétravail."},
+  {"id": "P005", "nom": "Hub USB-C 6 en 1", "categorie": "Informatique", "prix": 27.90, "stock": 18, "description": "Hub USB-C avec HDMI, 3 ports USB, lecteur de cartes SD."},
+
+  {"id": "P006", "nom": "Casque Bluetooth Pro", "categorie": "Audio", "prix": 49.99, "stock": 8, "description": "Casque sans fil à réduction de bruit, autonomie 30 h."},
+  {"id": "P007", "nom": "Écouteurs sans fil Air", "categorie": "Audio", "prix": 39.90, "stock": 25, "description": "Écouteurs Bluetooth avec boîtier de charge, autonomie 20 h."},
+  {"id": "P008", "nom": "Enceinte portable Boom", "categorie": "Audio", "prix": 44.50, "stock": 3, "description": "Enceinte Bluetooth étanche, son 360°, autonomie 12 h."},
+  {"id": "P009", "nom": "Casque filaire Studio", "categorie": "Audio", "prix": 24.90, "stock": 14, "description": "Casque filaire confortable, prise jack 3,5 mm."},
+  {"id": "P010", "nom": "Micro USB Podcast", "categorie": "Audio", "prix": 69.00, "stock": 0, "description": "Micro USB à condensateur pour podcast et streaming."},
+
+  {"id": "P011", "nom": "Chargeur rapide 30W", "categorie": "Téléphonie", "prix": 15.90, "stock": 40, "description": "Chargeur secteur USB-C 30 W, charge rapide."},
+  {"id": "P012", "nom": "Power bank 10000 mAh", "categorie": "Téléphonie", "prix": 22.90, "stock": 20, "description": "Batterie externe compacte, 2 ports USB."},
+  {"id": "P013", "nom": "Coque antichoc universelle", "categorie": "Téléphonie", "prix": 9.90, "stock": 50, "description": "Coque en silicone renforcé, compatible avec la plupart des smartphones."},
+  {"id": "P014", "nom": "Câble USB-C 2 m", "categorie": "Téléphonie", "prix": 7.50, "stock": 60, "description": "Câble USB-C tressé, 2 mètres, charge et transfert de données."},
+  {"id": "P015", "nom": "Support téléphone voiture", "categorie": "Téléphonie", "prix": 12.90, "stock": 9, "description": "Support magnétique pour grille d'aération."},
+
+  {"id": "P016", "nom": "Lampe de bureau LED", "categorie": "Maison", "prix": 29.90, "stock": 11, "description": "Lampe LED réglable, 3 températures de couleur, port USB."},
+  {"id": "P017", "nom": "Ampoule connectée Wi-Fi", "categorie": "Maison", "prix": 14.90, "stock": 22, "description": "Ampoule LED couleur pilotable depuis le smartphone."},
+  {"id": "P018", "nom": "Prise connectée", "categorie": "Maison", "prix": 12.50, "stock": 0, "description": "Prise Wi-Fi avec programmation horaire et suivi de consommation."},
+  {"id": "P019", "nom": "Bouilloire électrique 1,7 L", "categorie": "Maison", "prix": 32.00, "stock": 7, "description": "Bouilloire inox, arrêt automatique, 2200 W."},
+  {"id": "P020", "nom": "Ventilateur USB silencieux", "categorie": "Maison", "prix": 16.90, "stock": 15, "description": "Petit ventilateur de bureau USB, 3 vitesses."},
+
+  {"id": "P021", "nom": "Manette sans fil Gamer", "categorie": "Gaming", "prix": 39.00, "stock": 10, "description": "Manette Bluetooth compatible PC et Android, vibrations."},
+  {"id": "P022", "nom": "Tapis de souris XXL", "categorie": "Gaming", "prix": 14.90, "stock": 35, "description": "Tapis de souris 90x40 cm, surface glisse, base antidérapante."},
+  {"id": "P023", "nom": "Casque gaming RGB", "categorie": "Gaming", "prix": 54.90, "stock": 4, "description": "Casque gaming avec micro antibruit et éclairage RGB."},
+  {"id": "P024", "nom": "Souris gaming 7200 DPI", "categorie": "Gaming", "prix": 29.90, "stock": 16, "description": "Souris filaire 7 boutons programmables, RGB."},
+  {"id": "P025", "nom": "Clavier gaming compact", "categorie": "Gaming", "prix": 49.90, "stock": 0, "description": "Clavier mécanique 60 %, RGB, idéal pour les petits bureaux."}
+]
