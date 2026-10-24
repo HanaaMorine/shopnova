@@ -56,16 +56,8 @@ def creer_retour(numero, motif):
 
 
 # ---------- Tests ----------
-print(chercher_produit("casque"))
-
-print(suivre_commande("CMD1003"))
-print(suivre_commande("cmd1003"))
-print(suivre_commande("CMD9999"))
-
-print(recommander("Audio", 40))
-print(recommander("gaming", 30))
-print(recommander("Maison", 5))
-
-print(creer_retour("CMD1001", "Le son grésille"))
-print(creer_retour("CMD1003", "Je ne le veux plus"))
-print(creer_retour("CMD9999", "Test"))
+if __name__ == "__main__":
+    print(chercher_produit("casque"))
+    print(suivre_commande("CMD1003"))
+    print(recommander("Audio", 40))
+    print(creer_retour("CMD1001", "Le son grésille"))
