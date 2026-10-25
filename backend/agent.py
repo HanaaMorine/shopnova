@@ -1,67 +1,142 @@
 import json
 from dotenv import load_dotenv
 from openai import OpenAI
-from tools import chercher_produit
+from tools import chercher_produit, suivre_commande, recommander, creer_retour
 
 load_dotenv()
 client = OpenAI()
+MODELE = "gpt-4o-mini"
 
-# La fiche de l'outil chercher_produit
+
+# ---------- 1. Les fiches des outils (pour le LLM) ----------
 outils = [
     {
         "type": "function",
         "function": {
             "name": "chercher_produit",
-            "description": "Cherche les produits de la boutique ShopNova dont le nom contient un mot.",
+            "description": "Cherche les produits de ShopNova dont le nom contient un mot (ex. 'casque', 'souris').",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "recherche": {
-                        "type": "string",
-                        "description": "Le mot à chercher, par exemple 'casque' ou 'souris'."
-                    }
+                    "recherche": {"type": "string", "description": "Le mot à chercher."}
                 },
                 "required": ["recherche"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "suivre_commande",
+            "description": "Donne le statut et les détails d'une commande à partir de son numéro (ex. 'CMD1003').",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "numero": {"type": "string", "description": "Le numéro de commande, ex. CMD1003."}
+                },
+                "required": ["numero"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "recommander",
+            "description": "Recommande des produits en stock d'une catégorie, sans dépasser un budget. "
+                           "Catégories : Informatique, Audio, Téléphonie, Maison, Gaming.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "categorie": {"type": "string", "description": "La catégorie de produits."},
+                    "budget_max": {"type": "number", "description": "Le budget maximum en euros."}
+                },
+                "required": ["categorie", "budget_max"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "creer_retour",
+            "description": "Crée une demande de retour pour une commande livrée.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "numero": {"type": "string", "description": "Le numéro de commande."},
+                    "motif": {"type": "string", "description": "La raison du retour."}
+                },
+                "required": ["numero", "motif"]
             }
         }
     }
 ]
 
+
+# ---------- 2. L'annuaire : nom de l'outil → fonction Python ----------
+fonctions = {
+    "chercher_produit": chercher_produit,
+    "suivre_commande": suivre_commande,
+    "recommander": recommander,
+    "creer_retour": creer_retour,
+}
+
+
+def executer_outil(nom, arguments):
+    """Exécute l'outil demandé par le LLM et renvoie le résultat (ou une erreur)."""
+    if nom not in fonctions:
+        return {"erreur": f"Outil inconnu : {nom}"}
+    try:
+        return fonctions[nom](**arguments)
+    except Exception as e:
+        return {"erreur": f"L'outil {nom} a échoué : {e}"}
+
+
+# ---------- 3. Le prompt système ----------
 messages = [
-    {"role": "system", "content": "Tu es l'assistant de ShopNova. Utilise tes outils pour répondre, n'invente rien."},
-    {"role": "user", "content": "Avez-vous des casques ?"}
+    {"role": "system", "content": (
+        "Tu es l'assistant de la boutique en ligne ShopNova. "
+        "Tu réponds en français, poliment et de façon concise. "
+        "Règles : "
+        "1. Chaque information sur les produits ou les commandes doit venir d'un outil. N'invente jamais. "
+        "2. Si un outil renvoie une erreur ou rien, explique-le simplement au client. "
+        "3. Pour suivre une commande ou faire un retour, demande le numéro de commande s'il manque. "
+        "4. Si la question n'a rien à voir avec la boutique, dis poliment que tu ne peux aider que pour ShopNova."
+    )}
 ]
 
-# 1er appel : le LLM décide s'il a besoin d'un outil
-reponse = client.chat.completions.create(
-    model="gpt-4o-mini",
-    messages=messages,
-    tools=outils
-)
-message_ia = reponse.choices[0].message
 
-# Le LLM a-t-il demandé un outil ?
-if message_ia.tool_calls:
-    appel = message_ia.tool_calls[0]
-    arguments = json.loads(appel.function.arguments)
-    print(f"🛠️ L'agent appelle {appel.function.name} avec {arguments}")
+# ---------- 4. La boucle de conversation ----------
+print("ShopNova : Bonjour ! Comment puis-je vous aider ? (tapez 'quitter' pour arrêter)")
 
-    # On exécute VRAIMENT la fonction Python
-    resultat = chercher_produit(arguments["recherche"])
+while True:
+    question = input("Vous : ")
+    if question.lower() == "quitter":
+        break
+    messages.append({"role": "user", "content": question})
 
-    # On ajoute à l'historique : la demande du LLM + le résultat de l'outil
-    messages.append(message_ia)
-    messages.append({
-        "role": "tool",
-        "tool_call_id": appel.id,
-        "content": json.dumps(resultat, ensure_ascii=False)
-    })
+    # ---------- 5. La boucle d'agent ----------
+    while True:
+        reponse = client.chat.completions.create(model=MODELE, messages=messages, tools=outils)
+        message_ia = reponse.choices[0].message
 
-    # 2e appel : le LLM répond avec les vraies données
-    reponse = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=messages,
-        tools=outils
-    )
+        # Pas d'outil demandé → c'est la réponse finale
+        if not message_ia.tool_calls:
+            print(f"ShopNova : {message_ia.content}")
+            messages.append({"role": "assistant", "content": message_ia.content})
+            break
 
-print(f"ShopNova : {reponse.choices[0].message.content}")
+        # Le LLM demande un ou plusieurs outils → on les exécute
+        messages.append(message_ia)
+        for appel in message_ia.tool_calls:
+            nom = appel.function.name
+            arguments = json.loads(appel.function.arguments)
+            print(f"   🛠️ {nom}({arguments})")
+
+            resultat = executer_outil(nom, arguments)
+
+            messages.append({
+                "role": "tool",
+                "tool_call_id": appel.id,
+                "content": json.dumps(resultat, ensure_ascii=False)
+            })
+        # On recommence la boucle : le LLM lit les résultats et décide de la suite
