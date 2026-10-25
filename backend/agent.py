@@ -2,13 +2,14 @@ import json
 from dotenv import load_dotenv
 from openai import OpenAI
 from tools import chercher_produit, suivre_commande, recommander, creer_retour
+from rag import chercher_dans_documents          # 🆕 on importe la recherche RAG
 
 load_dotenv()
 client = OpenAI()
 MODELE = "gpt-4o-mini"
 
 
-# ---------- 1. Les fiches des outils (pour le LLM) ----------
+# ===== 1. Les fiches des outils (pour que le LLM sache quoi utiliser) =====
 outils = [
     {
         "type": "function",
@@ -68,16 +69,33 @@ outils = [
                 "required": ["numero", "motif"]
             }
         }
+    },
+    {   # 🆕 l'outil RAG
+        "type": "function",
+        "function": {
+            "name": "chercher_dans_documents",
+            "description": "Cherche dans les documents officiels de ShopNova (politique de retour, livraison, "
+                           "garantie, FAQ : paiement, annulation, contact...). À utiliser pour toute question "
+                           "sur les règles, délais, frais ou conditions de la boutique.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "question": {"type": "string", "description": "La question du client, reformulée clairement."}
+                },
+                "required": ["question"]
+            }
+        }
     }
 ]
 
 
-# ---------- 2. L'annuaire : nom de l'outil → fonction Python ----------
+# ===== 2. L'annuaire : nom de l'outil → fonction Python =====
 fonctions = {
     "chercher_produit": chercher_produit,
     "suivre_commande": suivre_commande,
     "recommander": recommander,
     "creer_retour": creer_retour,
+    "chercher_dans_documents": chercher_dans_documents,   # 🆕
 }
 
 
@@ -91,21 +109,24 @@ def executer_outil(nom, arguments):
         return {"erreur": f"L'outil {nom} a échoué : {e}"}
 
 
-# ---------- 3. Le prompt système ----------
+# ===== 3. Le prompt système (les règles de l'agent) =====
 messages = [
     {"role": "system", "content": (
         "Tu es l'assistant de la boutique en ligne ShopNova. "
         "Tu réponds en français, poliment et de façon concise. "
         "Règles : "
-        "1. Chaque information sur les produits ou les commandes doit venir d'un outil. N'invente jamais. "
-        "2. Si un outil renvoie une erreur ou rien, explique-le simplement au client. "
-        "3. Pour suivre une commande ou faire un retour, demande le numéro de commande s'il manque. "
-        "4. Si la question n'a rien à voir avec la boutique, dis poliment que tu ne peux aider que pour ShopNova."
+        "1. Chaque information doit venir d'un outil. N'invente jamais. "
+        "2. Pour les produits et les commandes, utilise les outils produits/commandes. "
+        "3. Pour les règles de la boutique (retours, livraison, garantie, paiement...), "     # 🆕
+        "utilise chercher_dans_documents et indique la source (ex. 'd'après notre politique de retour'). "  # 🆕
+        "4. Si un outil renvoie une erreur ou rien, explique-le simplement au client. "
+        "5. Pour suivre une commande ou faire un retour, demande le numéro de commande s'il manque. "
+        "6. Si la question n'a rien à voir avec la boutique, dis poliment que tu ne peux aider que pour ShopNova."
     )}
 ]
 
 
-# ---------- 4. La boucle de conversation ----------
+# ===== 4. La boucle de conversation =====
 print("ShopNova : Bonjour ! Comment puis-je vous aider ? (tapez 'quitter' pour arrêter)")
 
 while True:
@@ -114,7 +135,7 @@ while True:
         break
     messages.append({"role": "user", "content": question})
 
-    # ---------- 5. La boucle d'agent ----------
+    # ===== 5. La boucle d'agent =====
     while True:
         reponse = client.chat.completions.create(model=MODELE, messages=messages, tools=outils)
         message_ia = reponse.choices[0].message
@@ -139,4 +160,3 @@ while True:
                 "tool_call_id": appel.id,
                 "content": json.dumps(resultat, ensure_ascii=False)
             })
-        # On recommence la boucle : le LLM lit les résultats et décide de la suite
