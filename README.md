@@ -6,6 +6,7 @@
 ShopNova est un **agent IA de support client** pour une boutique en ligne. Il répond aux clients en français, consulte les **données de la boutique** grâce à des **outils** (function calling), et répond aux questions sur les **règles de la boutique** grâce à un **RAG** sur des documents internes.
 
 ![Capture de l'interface](docs/capture.png)
+![Capture de l'interface 2](docs/capture2.png)
 
 ---
 
