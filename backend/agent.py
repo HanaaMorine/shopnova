@@ -125,6 +125,7 @@ PROMPT_SYSTEME = (
     # ✏️ MODIFICATION 2 : vérifier dans les documents avant de dire « hors sujet »
     "6. Avant de dire qu'une question est hors sujet, vérifie d'abord dans les documents avec chercher_dans_documents. "
     "Si la question n'a vraiment rien à voir avec la boutique, dis poliment que tu ne peux aider que pour ShopNova."
+    "7. Si une information n'est pas écrite clairement dans les documents, dis-le au client au lieu de la déduire. "
 )
 
 
