@@ -1,0 +1,22 @@
+[
+  {
+    "user_input": "J'ai combien de jours pour retourner un produit ?",
+    "reference": "Le client dispose de 30 jours à compter de la date de livraison pour demander un retour."
+  },
+  {
+    "user_input": "La livraison est gratuite à partir de combien ?",
+    "reference": "La livraison standard est gratuite pour toute commande de 50 € ou plus. La livraison express reste payante."
+  },
+  {
+    "user_input": "Mon clavier est garanti combien de temps ?",
+    "reference": "Les produits Informatique, comme les claviers, sont garantis 3 ans : 2 ans de garantie légale plus 1 an d'extension ShopNova."
+  },
+  {
+    "user_input": "Est-ce que je peux payer par chèque ?",
+    "reference": "Non, ShopNova n'accepte pas les chèques ni le paiement à la livraison. Les moyens acceptés sont la carte bancaire, PayPal et Apple Pay."
+  },
+  {
+    "user_input": "Je peux annuler ma commande si elle est déjà expédiée ?",
+    "reference": "Non, une commande expédiée ne peut plus être annulée. Il faudra faire une demande de retour après la livraison."
+  }
+]
