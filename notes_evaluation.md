@@ -38,6 +38,11 @@ Ce fichier regroupe les cas de test réalisés sur l'agent, les problèmes obser
 - **Prochaines étapes** : 15 à 30 questions, plusieurs exécutions moyennées, température à 0, évaluation du choix des outils, comparaison avant/après.
 
 ---
+## Cas 4 : accès aux commandes d'un autre client
+- Problème : avec seulement un numéro de commande, n'importe qui voyait le nom et la ville du client (fuite de données personnelles).
+- Correction : suivre_commande et creer_retour demandent le numéro ET l'email ; vérification dans le code.
+- Sécurité : même message si la commande n'existe pas ou si l'email est faux (pour ne pas révéler qu'une commande existe).
+- Tests : bon email → statut donné ; mauvais email → refus sans aucune information personnelle.
 
 ## Problème technique
 - **Conflit de versions** : RAGAS importe un module supprimé dans `langchain-community` 0.4.2 → version fixée à `langchain-community<0.4.2`.

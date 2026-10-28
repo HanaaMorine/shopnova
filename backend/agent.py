@@ -2,14 +2,14 @@ import json
 from dotenv import load_dotenv
 from openai import OpenAI
 from tools import chercher_produit, suivre_commande, recommander, creer_retour
-from rag import chercher_dans_documents          # on importe la recherche RAG
+from rag import chercher_dans_documents
 
 load_dotenv()
 client = OpenAI()
 MODELE = "gpt-4o-mini"
 
 
-# ===== 1. Les fiches des outils (pour que le LLM sache quoi utiliser) =====
+# ===== 1. Les fiches des outils =====
 outils = [
     {
         "type": "function",
@@ -29,13 +29,15 @@ outils = [
         "type": "function",
         "function": {
             "name": "suivre_commande",
-            "description": "Donne le statut et les détails d'une commande à partir de son numéro (ex. 'CMD1003').",
+            "description": "Donne le statut et les détails d'une commande. Nécessite le numéro de commande "
+                           "ET l'email du client (pour vérifier que la commande lui appartient).",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "numero": {"type": "string", "description": "Le numéro de commande, ex. CMD1003."}
+                    "numero": {"type": "string", "description": "Le numéro de commande, ex. CMD1003."},
+                    "email": {"type": "string", "description": "L'email du client qui a passé la commande."}
                 },
-                "required": ["numero"]
+                "required": ["numero", "email"]
             }
         }
     },
@@ -59,22 +61,23 @@ outils = [
         "type": "function",
         "function": {
             "name": "creer_retour",
-            "description": "Crée une demande de retour pour une commande livrée.",
+            "description": "Crée une demande de retour pour une commande livrée. Nécessite le numéro de "
+                           "commande, l'email du client et le motif du retour.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "numero": {"type": "string", "description": "Le numéro de commande."},
+                    "email": {"type": "string", "description": "L'email du client qui a passé la commande."},
                     "motif": {"type": "string", "description": "La raison du retour."}
                 },
-                "required": ["numero", "motif"]
+                "required": ["numero", "email", "motif"]
             }
         }
     },
-    {   # l'outil RAG
+    {
         "type": "function",
         "function": {
             "name": "chercher_dans_documents",
-            # ✏️ MODIFICATION 1 : description plus large
             "description": "Cherche dans les documents officiels de ShopNova : politique de retour, livraison, "
                            "garantie et FAQ (paiement, codes promo, réductions, annulation, factures, rupture "
                            "de stock, contact du service client, catégories vendues...). À utiliser pour TOUTE "
@@ -111,7 +114,7 @@ def executer_outil(nom, arguments):
         return {"erreur": f"L'outil {nom} a échoué : {e}"}
 
 
-# ===== 3. Le prompt système (les règles de l'agent) =====
+# ===== 3. Le prompt système =====
 PROMPT_SYSTEME = (
     "Tu es l'assistant de la boutique en ligne ShopNova. "
     "Tu réponds en français, poliment et de façon concise. "
@@ -121,36 +124,30 @@ PROMPT_SYSTEME = (
     "3. Pour les règles de la boutique (retours, livraison, garantie, paiement...), "
     "utilise chercher_dans_documents et indique la source (ex. 'd'après notre politique de retour'). "
     "4. Si un outil renvoie une erreur ou rien, explique-le simplement au client. "
-    "5. Pour suivre une commande ou faire un retour, demande le numéro de commande s'il manque. "
-    # ✏️ MODIFICATION 2 : vérifier dans les documents avant de dire « hors sujet »
+    "5. Pour suivre une commande ou faire un retour, demande le numéro de commande ET l'email du client "
+    "s'ils manquent. N'invente jamais un email. "
     "6. Avant de dire qu'une question est hors sujet, vérifie d'abord dans les documents avec chercher_dans_documents. "
     "Si la question n'a vraiment rien à voir avec la boutique, dis poliment que tu ne peux aider que pour ShopNova."
-    "7. Si une information n'est pas écrite clairement dans les documents, dis-le au client au lieu de la déduire. "
 )
 
 
-# ===== 4. La boucle d'agent, rangée dans une fonction =====
+# ===== 4. La boucle d'agent =====
 def repondre(messages):
-    """Fait tourner l'agent sur l'historique 'messages'.
-    Renvoie : le texte de la réponse finale + la liste des outils utilisés."""
-    outils_utilises = []                      # pour montrer dans l'interface quels outils ont servi
-
+    """Fait tourner l'agent. Renvoie : le texte de la réponse + la liste des outils utilisés."""
+    outils_utilises = []
     while True:
         reponse = client.chat.completions.create(model=MODELE, messages=messages, tools=outils)
         message_ia = reponse.choices[0].message
 
-        # Pas d'outil demandé → c'est la réponse finale
         if not message_ia.tool_calls:
             messages.append({"role": "assistant", "content": message_ia.content})
             return message_ia.content, outils_utilises
 
-        # Le LLM demande un ou plusieurs outils → on les exécute
         messages.append(message_ia)
         for appel in message_ia.tool_calls:
             nom = appel.function.name
             arguments = json.loads(appel.function.arguments)
-            outils_utilises.append(f"{nom}({arguments})")    # on garde une trace
-
+            outils_utilises.append(f"{nom}({arguments})")
             resultat = executer_outil(nom, arguments)
             messages.append({
                 "role": "tool",
@@ -159,7 +156,7 @@ def repondre(messages):
             })
 
 
-# ===== 5. Pour discuter dans le terminal (comme avant) =====
+# ===== 5. Pour discuter dans le terminal =====
 if __name__ == "__main__":
     messages = [{"role": "system", "content": PROMPT_SYSTEME}]
     print("ShopNova : Bonjour ! Comment puis-je vous aider ? (tapez 'quitter' pour arrêter)")
