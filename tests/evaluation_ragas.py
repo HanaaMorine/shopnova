@@ -36,7 +36,9 @@ def extraire_contextes(messages):
             if isinstance(resultat, list):                 # le RAG renvoie une liste de chunks
                 for chunk in resultat:
                     if isinstance(chunk, dict) and "texte" in chunk:
-                        contextes.append(chunk["texte"])
+                                                contextes.append(
+                            f"Source : {chunk.get('source')} (section : {chunk.get('section')})\n{chunk['texte']}"
+                        )
     return contextes
 
 
