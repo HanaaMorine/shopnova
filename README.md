@@ -1,9 +1,9 @@
 # 🛒 ShopNova — Agent IA de support client (outils + RAG)
 
-> Projet personnel d'apprentissage — **version 1**.
+> Projet personnel d'apprentissage.
 > ShopNova est une boutique en ligne **fictive** : toutes les données (produits, commandes, documents) sont des **données de démonstration**.
 
-ShopNova est un **agent IA de support client** pour une boutique en ligne. Il répond aux clients en français, consulte les **données de la boutique** grâce à des **outils** (function calling), et répond aux questions sur les **règles de la boutique** grâce à un **RAG** sur des documents internes. Des **garde-fous** dans le code protègent les données des clients et les règles de la boutique.
+ShopNova est un **agent IA de support client** pour une boutique en ligne. Il répond aux clients en français, consulte les **données de la boutique** grâce à des **outils** (function calling), et répond aux questions sur les **règles de la boutique** grâce à un **RAG** sur des documents internes. L'agent est exposé par une **API FastAPI**, utilisée par une interface **Streamlit**. Des **garde-fous** dans le code protègent les données des clients et les règles de la boutique.
 
 ![Capture de l'interface](docs/capture.png)
 
@@ -21,8 +21,9 @@ ShopNova est un **agent IA de support client** pour une boutique en ligne. Il r�
 
 - **Agentic RAG** : l'agent choisit lui-même entre les outils (données précises : produits, commandes) et le RAG (règles : retours, livraison, garantie, FAQ).
 - **Citation des sources** : les réponses issues des documents indiquent leur origine.
-- **Mémoire de conversation** avec fenêtre glissante.
-- **Gestion des erreurs** : si un outil échoue, l'erreur est renvoyée au modèle, qui l'explique au client.
+- **API REST (FastAPI)** : route `POST /chat`, validation des entrées et sorties avec **Pydantic** (requête invalide → erreur 422), une conversation par client grâce à un `session_id`.
+- **Mémoire de conversation** : l'historique de chaque session est renvoyé au modèle à chaque appel.
+- **Gestion des erreurs** : si un outil échoue, l'erreur est renvoyée au modèle, qui l'explique au client ; si l'API est injoignable, l'interface affiche un message clair.
 
 ---
 
@@ -36,6 +37,7 @@ Principe de **défense en profondeur** : le prompt guide le modèle, mais les r�
 | Retour seulement **dans les 30 jours** après la livraison | code (`creer_retour`) | commande livrée il y a 35 jours → refus, même quand le client insiste |
 | Une commande n'est visible que par **son client** (numéro + email) | code (`suivre_commande`, `creer_retour`) | mauvais email → refus, sans aucune donnée personnelle |
 | Même message si la commande n'existe pas ou si l'email est faux | code | ne révèle pas l'existence d'une commande |
+| Validation des requêtes | API (Pydantic) | message vide → erreur 422, l'agent n'est pas appelé |
 | Résistance au **prompt injection** (OWASP LLM Top 10) | prompt système + code | **5 attaques sur 5 bloquées** (révéler le prompt, faux administrateur, « mode développeur », contourner la règle des 30 jours, changer de rôle) |
 
 ---
@@ -45,7 +47,9 @@ Principe de **défense en profondeur** : le prompt guide le modèle, mais les r�
 ```
 👤 Client
    ↓
-🖥️ Interface Streamlit  (frontend/app.py)
+🖥️ Interface Streamlit                 (frontend/app.py)
+   ↓  requête HTTP  POST /chat
+⚙️ API FastAPI + Pydantic + sessions   (backend/main.py)
    ↓
 🤖 Agent : LLM OpenAI + boucle d'agent  (backend/agent.py)
    ↓                                  ↓
@@ -58,6 +62,7 @@ Principe de **défense en profondeur** : le prompt guide le modèle, mais les r�
 **Choix de conception**
 - **Outils pour les données structurées** (prix, stock, commandes) : elles demandent une réponse **exacte et à jour**, ce qu'une recherche sémantique ne garantit pas.
 - **RAG pour les documents** (politiques, FAQ) : la recherche par le **sens** permet de retrouver une règle même si le client utilise d'autres mots.
+- **Frontend et backend séparés** : l'interface ne connaît pas l'agent, elle appelle l'API ; elle pourrait être remplacée (site web, application mobile) sans modifier le backend.
 - **Boucle d'agent codée à la main** (sans framework) pour comprendre le mécanisme du function calling, avant de la migrer vers LangGraph.
 - **Découpage des documents par titres Markdown** : chaque chunk correspond à une section complète, avec ses métadonnées (document, section, fichier source).
 
@@ -83,8 +88,9 @@ Le détail de tous les cas est dans [`notes_evaluation.md`](notes_evaluation.md)
 - **OpenAI API** (chat completions + function calling, embeddings `text-embedding-3-small`)
 - **LangChain** (découpage des documents)
 - **ChromaDB** (base vectorielle)
-- **RAGAS** (évaluation du RAG)
+- **FastAPI** + **Pydantic** (API REST, validation des données)
 - **Streamlit** (interface)
+- **RAGAS** (évaluation du RAG)
 
 ---
 
@@ -103,11 +109,22 @@ Créer un fichier `.env` à la racine :
 OPENAI_API_KEY=votre_cle_api
 ```
 
-Construire la base vectorielle, puis lancer l'application :
+Construire la base vectorielle (une seule fois) :
 ```bash
 python backend/rag.py
+```
+
+Lancer l'application (**deux terminaux**) :
+```bash
+# Terminal 1 : l'API
+uvicorn main:app --reload --app-dir backend
+
+# Terminal 2 : l'interface
 streamlit run frontend/app.py
 ```
+
+- Interface : http://localhost:8501
+- Documentation interactive de l'API (Swagger) : http://127.0.0.1:8000/docs
 
 Lancer l'évaluation RAGAS :
 ```bash
@@ -136,21 +153,21 @@ python tests/evaluation_ragas.py
 
 ---
 
-## 🗺️ Prochaines étapes (version 2)
+## 🗺️ Prochaines étapes
 
 - [x] Garde-fous : délai de retour de 30 jours, vérification du client, résistance au prompt injection
 - [x] Évaluation RAGAS (score de départ)
-- [ ] Évaluation plus large : 15 à 30 cas, choix des outils, plusieurs exécutions, comparaison avant/après
+- [x] API FastAPI + Pydantic, interface reliée à l'API
+- [ ] Tests `pytest` (outils, règles métier, API)
 - [ ] Outils branchés sur SQLite (les retours sont actuellement gardés en mémoire)
-- [ ] Validation des entrées avec Pydantic
-- [ ] API FastAPI entre l'interface et l'agent
-- [ ] Tests `pytest`, Docker, GitHub Actions
+- [ ] Évaluation plus large : 15 à 30 cas, choix des outils, plusieurs exécutions, comparaison avant/après
+- [ ] Logs, Docker, GitHub Actions
 - [ ] Migration de la boucle d'agent vers LangGraph
 
 ---
 
 ## ⚠️ Limites connues
 
-- Données fictives, une seule conversation à la fois.
-- Les demandes de retour ne sont pas encore sauvegardées en base.
+- Données fictives.
+- Les conversations et les demandes de retour sont gardées en mémoire (perdues au redémarrage de l'API).
 - Évaluation sur un petit jeu de test (5 questions).
