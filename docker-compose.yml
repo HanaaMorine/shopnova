@@ -8,6 +8,8 @@ services:
     env_file: .env                    # donne la clé API au lancement (jamais dans l'image)
     ports:
       - "8000:8000"                   # port 8000 du PC → port 8000 de la boîte
+    # Au démarrage : si la base vectorielle n'existe pas, on la construit, puis on lance l'API
+    command: sh -c "[ -d data/chroma_db ] || python backend/rag.py; uvicorn main:app --host 0.0.0.0 --port 8000 --app-dir backend"
 
   # 🖥️ Boîte 2 : l'interface Streamlit
   frontend:

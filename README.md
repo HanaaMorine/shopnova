@@ -3,7 +3,7 @@
 > Projet personnel d'apprentissage.
 > ShopNova est une boutique en ligne **fictive** : toutes les données (produits, commandes, documents) sont des **données de démonstration**.
 
-ShopNova est un **agent IA de support client** pour une boutique en ligne. Il répond aux clients en français, consulte les **données de la boutique** grâce à des **outils** (function calling), et répond aux questions sur les **règles de la boutique** grâce à un **RAG** sur des documents internes. L'agent est exposé par une **API FastAPI**, utilisée par une interface **Streamlit**. Des **garde-fous** dans le code protègent les données des clients et les règles de la boutique.
+ShopNova est un **agent IA de support client** pour une boutique en ligne. Il répond aux clients en français, consulte les **données de la boutique** grâce à des **outils** (function calling), et répond aux questions sur les **règles de la boutique** grâce à un **RAG** sur des documents internes. L'agent est exposé par une **API FastAPI**, utilisée par une interface **Streamlit**, et l'ensemble est **conteneurisé avec Docker**. Des **garde-fous** dans le code protègent les données des clients et les règles de la boutique.
 
 ![Capture de l'interface](docs/capture.png)
 
@@ -24,6 +24,7 @@ ShopNova est un **agent IA de support client** pour une boutique en ligne. Il r�
 - **API REST (FastAPI)** : route `POST /chat`, validation des entrées et sorties avec **Pydantic** (requête invalide → erreur 422), une conversation par client grâce à un `session_id`.
 - **Mémoire de conversation** : l'historique de chaque session est renvoyé au modèle à chaque appel.
 - **Gestion des erreurs** : si un outil échoue, l'erreur est renvoyée au modèle, qui l'explique au client ; si l'API est injoignable, l'interface affiche un message clair.
+- **Docker** : deux conteneurs (API et interface) lancés ensemble avec docker-compose.
 
 ---
 
@@ -39,6 +40,7 @@ Principe de **défense en profondeur** : le prompt guide le modèle, mais les r�
 | Même message si la commande n'existe pas ou si l'email est faux | code | ne révèle pas l'existence d'une commande |
 | Validation des requêtes | API (Pydantic) | message vide → erreur 422, l'agent n'est pas appelé |
 | Résistance au **prompt injection** (OWASP LLM Top 10) | prompt système + code | **5 attaques sur 5 bloquées** (révéler le prompt, faux administrateur, « mode développeur », contourner la règle des 30 jours, changer de rôle) |
+| Clé API jamais dans l'image Docker | `.dockerignore` + `env_file` | la clé est passée au lancement du conteneur |
 
 ---
 
@@ -47,11 +49,11 @@ Principe de **défense en profondeur** : le prompt guide le modèle, mais les r�
 ```
 👤 Client
    ↓
-🖥️ Interface Streamlit                 (frontend/app.py)
-   ↓  requête HTTP  POST /chat
-⚙️ API FastAPI + Pydantic + sessions   (backend/main.py)
+🐳 Conteneur frontend : Interface Streamlit          (frontend/app.py)
+   ↓  requête HTTP  POST /chat  (http://api:8000/chat)
+🐳 Conteneur api : FastAPI + Pydantic + sessions     (backend/main.py)
    ↓
-🤖 Agent : LLM OpenAI + boucle d'agent  (backend/agent.py)
+🤖 Agent : LLM OpenAI + boucle d'agent               (backend/agent.py)
    ↓                                  ↓
 🛠️ Outils Python + garde-fous       📚 RAG
 (backend/tools.py)                 (backend/rag.py)
@@ -62,7 +64,8 @@ Principe de **défense en profondeur** : le prompt guide le modèle, mais les r�
 **Choix de conception**
 - **Outils pour les données structurées** (prix, stock, commandes) : elles demandent une réponse **exacte et à jour**, ce qu'une recherche sémantique ne garantit pas.
 - **RAG pour les documents** (politiques, FAQ) : la recherche par le **sens** permet de retrouver une règle même si le client utilise d'autres mots.
-- **Frontend et backend séparés** : l'interface ne connaît pas l'agent, elle appelle l'API ; elle pourrait être remplacée (site web, application mobile) sans modifier le backend.
+- **Frontend et backend séparés**, dans **deux conteneurs** : l'interface ne connaît pas l'agent, elle appelle l'API ; elle pourrait être remplacée (site web, application mobile) sans modifier le backend.
+- **Image frontend légère** : elle n'installe que Streamlit et requests, pas les dépendances de l'agent.
 - **Boucle d'agent codée à la main** (sans framework) pour comprendre le mécanisme du function calling, avant de la migrer vers LangGraph.
 - **Découpage des documents par titres Markdown** : chaque chunk correspond à une section complète, avec ses métadonnées (document, section, fichier source).
 
@@ -90,11 +93,42 @@ Le détail de tous les cas est dans [`notes_evaluation.md`](notes_evaluation.md)
 - **ChromaDB** (base vectorielle)
 - **FastAPI** + **Pydantic** (API REST, validation des données)
 - **Streamlit** (interface)
+- **Docker** + **docker-compose** (conteneurisation)
 - **RAGAS** (évaluation du RAG)
 
 ---
 
-## 🚀 Installation
+## 🚀 Lancer le projet
+
+### Option 1 : avec Docker (recommandé)
+
+Prérequis : [Docker Desktop](https://www.docker.com/products/docker-desktop/) lancé.
+
+```bash
+git clone https://github.com/HanaaMorine/shopnova.git
+cd shopnova
+```
+
+Créer un fichier `.env` à la racine :
+```
+OPENAI_API_KEY=votre_cle_api
+```
+
+Lancer l'API et l'interface :
+```bash
+docker compose up -d --build
+```
+Au premier démarrage, la base vectorielle est construite automatiquement.
+
+- Interface : http://localhost:8501
+- Documentation interactive de l'API (Swagger) : http://127.0.0.1:8000/docs
+
+Arrêter :
+```bash
+docker compose down
+```
+
+### Option 2 : sans Docker
 
 ```bash
 git clone https://github.com/HanaaMorine/shopnova.git
@@ -104,12 +138,7 @@ venv\Scripts\activate          # Windows  (macOS/Linux : source venv/bin/activat
 pip install -r requirements.txt
 ```
 
-Créer un fichier `.env` à la racine :
-```
-OPENAI_API_KEY=votre_cle_api
-```
-
-Construire la base vectorielle (une seule fois) :
+Créer le fichier `.env` (voir ci-dessus), puis construire la base vectorielle (une seule fois) :
 ```bash
 python backend/rag.py
 ```
@@ -123,10 +152,7 @@ uvicorn main:app --reload --app-dir backend
 streamlit run frontend/app.py
 ```
 
-- Interface : http://localhost:8501
-- Documentation interactive de l'API (Swagger) : http://127.0.0.1:8000/docs
-
-Lancer l'évaluation RAGAS :
+### Évaluation RAGAS
 ```bash
 python tests/evaluation_ragas.py
 ```
@@ -150,6 +176,7 @@ python tests/evaluation_ragas.py
 - **La description d'un outil guide le choix du modèle** : l'agent ne cherchait pas les codes promo dans la FAQ ; en élargissant la description de l'outil RAG, il a trouvé la bonne réponse.
 - **Les règles métier doivent être dans le code**, pas seulement dans le prompt : un modèle peut se tromper ou être manipulé.
 - **Une évaluation peut elle-même se tromper** : il faut toujours lire les cas, pas seulement les chiffres.
+- **Dans Docker, `127.0.0.1` désigne le conteneur lui-même** : l'interface doit appeler l'API par le nom de son service (`http://api:8000`), d'où une adresse d'API configurable par variable d'environnement.
 
 ---
 
@@ -158,10 +185,12 @@ python tests/evaluation_ragas.py
 - [x] Garde-fous : délai de retour de 30 jours, vérification du client, résistance au prompt injection
 - [x] Évaluation RAGAS (score de départ)
 - [x] API FastAPI + Pydantic, interface reliée à l'API
+- [x] Docker + docker-compose (API et interface)
 - [ ] Tests `pytest` (outils, règles métier, API)
+- [ ] GitHub Actions (tests automatiques à chaque push)
 - [ ] Outils branchés sur SQLite (les retours sont actuellement gardés en mémoire)
 - [ ] Évaluation plus large : 15 à 30 cas, choix des outils, plusieurs exécutions, comparaison avant/après
-- [ ] Logs, Docker, GitHub Actions
+- [ ] Logs des appels d'outils
 - [ ] Migration de la boucle d'agent vers LangGraph
 
 ---
