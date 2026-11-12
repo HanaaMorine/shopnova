@@ -1,0 +1,17 @@
+# 1. Même base que l'API : Python 3.10 léger
+FROM python:3.10-slim
+
+# 2. Dossier de travail dans le conteneur
+WORKDIR /app
+
+# 3. On installe SEULEMENT ce dont l'interface a besoin
+RUN pip install --no-cache-dir streamlit==1.65.0 requests==2.34.2
+
+# 4. On copie SEULEMENT le dossier frontend
+COPY frontend/ frontend/
+
+# 5. Streamlit utilise le port 8501
+EXPOSE 8501
+
+# 6. La commande qui lance l'interface (0.0.0.0 = accessible depuis l'extérieur de la boîte)
+CMD ["streamlit", "run", "frontend/app.py", "--server.address=0.0.0.0", "--server.port=8501"]

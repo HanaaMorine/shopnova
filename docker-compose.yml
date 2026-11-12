@@ -1,0 +1,22 @@
+services:
+
+  # ⚙️ Boîte 1 : l'API (FastAPI + agent + RAG)
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile          # utilise le Dockerfile de l'API
+    env_file: .env                    # donne la clé API au lancement (jamais dans l'image)
+    ports:
+      - "8000:8000"                   # port 8000 du PC → port 8000 de la boîte
+
+  # 🖥️ Boîte 2 : l'interface Streamlit
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend # utilise le Dockerfile de l'interface
+    environment:
+      - URL_API=http://api:8000/chat  # l'interface appelle l'API par son NOM : "api"
+    ports:
+      - "8501:8501"                   # port 8501 du PC → port 8501 de la boîte
+    depends_on:
+      - api                           # démarrer l'API avant l'interface

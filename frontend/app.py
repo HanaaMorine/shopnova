@@ -1,9 +1,10 @@
+import os
 import uuid
 import requests
 import streamlit as st
 
 # ===== L'adresse de notre API FastAPI =====
-URL_API = "http://127.0.0.1:8000/chat"
+URL_API = os.getenv("URL_API", "http://127.0.0.1:8000/chat")
 
 # ===== Le haut de la page =====
 st.set_page_config(page_title="ShopNova", page_icon="🛒")
